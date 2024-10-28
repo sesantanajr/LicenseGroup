@@ -1,18 +1,17 @@
 #####################################################
 ## Jornada365 | Wintuner                         ####
 ## jornada365.cloud                              ####
-## Sua jornada começa aqui.                      ####
-## ##########################################    ####
+## Sua jornada comeca aqui.                      ####
 #####################################################
 
-# Configuração de tratamento de erros e modo rigoroso
+# Configuracao de tratamento de erros e modo rigoroso
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-# Importação dos módulos necessários
+# Importacao dos modulos necessarios
 function Import-RequiredModules {
     try {
-        Write-LogMessage -Message "Verificando módulos necessários..." -Type INFO
+        Write-LogMessage -Message "Verificando modulos necessarios..." -Type INFO
         $requiredModules = @(
             "Microsoft.Graph.Authentication",
             "Microsoft.Graph.Users",
@@ -22,19 +21,19 @@ function Import-RequiredModules {
         
         foreach ($module in $requiredModules) {
             if (-not (Get-Module -Name $module -ListAvailable)) {
-                Write-LogMessage -Message "Instalando módulo $module..." -Type INFO
+                Write-LogMessage -Message "Instalando modulo $module..." -Type INFO
                 Install-Module -Name $module -Force -AllowClobber -Scope CurrentUser
             }
             Import-Module -Name $module -Force
         }
-        Write-LogMessage -Message "Todos os módulos necessários estão disponíveis." -Type SUCCESS
+        Write-LogMessage -Message "Todos os modulos necessarios estao disponiveis." -Type SUCCESS
     } catch {
-        Write-LogMessage -Message "Erro ao importar módulos: $_" -Type ERROR
+        Write-LogMessage -Message "Erro ao importar modulos: $_" -Type ERROR
         throw $_
     }
 }
 
-# Função para exibir mensagens formatadas
+# Funcao para exibir mensagens formatadas
 function Write-LogMessage {
     param(
         [Parameter(Mandatory = $true)]
@@ -51,7 +50,7 @@ function Write-LogMessage {
     Write-Host "[$timestamp][$Type] $Message" -ForegroundColor $colors[$Type]
 }
 
-# Função para autenticar no Microsoft Graph
+# Funcao para autenticar no Microsoft Graph
 function Connect-GraphPersistent {
     param(
         [switch]$Reconnect
@@ -66,17 +65,17 @@ function Connect-GraphPersistent {
             throw $_
         }
     } else {
-        Write-LogMessage -Message "Sessão do Microsoft Graph já está ativa." -Type INFO
+        Write-LogMessage -Message "Sessao do Microsoft Graph ja esta ativa." -Type INFO
     }
 }
 
-# Função para listar licenças (Sku IDs)
+# Funcao para listar licencas (Sku IDs)
 function Listar-Licencas {
     try {
-        Write-LogMessage -Message "Obtendo licenças disponíveis..." -Type INFO
+        Write-LogMessage -Message "Obtendo licencas disponiveis..." -Type INFO
         $licenses = Get-MgSubscribedSku -All | Sort-Object SkuPartNumber
         if (-not $licenses) {
-            Write-LogMessage -Message "Nenhuma licença encontrada no tenant." -Type ERROR
+            Write-LogMessage -Message "Nenhuma licenca encontrada no tenant." -Type ERROR
             return $null
         }
 
@@ -89,7 +88,7 @@ function Listar-Licencas {
                 Write-Host "$index - $($license.SkuPartNumber)" -ForegroundColor Blue
                 Write-Host "Total: $($license.PrepaidUnits.Enabled)" -ForegroundColor White
                 Write-Host "Em Uso: $($license.ConsumedUnits)" -ForegroundColor White
-                Write-Host "Disponíveis: $(($license.PrepaidUnits.Enabled) - $($license.ConsumedUnits))" -ForegroundColor White
+                Write-Host "Disponiveis: $(($license.PrepaidUnits.Enabled) - $($license.ConsumedUnits))" -ForegroundColor White
                 Write-Host "=====================" -ForegroundColor Blue
                 Write-Host "" -ForegroundColor Blue
                 $index++
@@ -97,12 +96,12 @@ function Listar-Licencas {
         }
         return $licenseMapping
     } catch {
-        Write-LogMessage -Message "Erro ao listar licenças: $_" -Type ERROR
+        Write-LogMessage -Message "Erro ao listar licencas: $_" -Type ERROR
         return $null
     }
 }
 
-# Função para gerenciar membros do grupo com base no Sku ID selecionado
+# Funcao para gerenciar membros do grupo com base no Sku ID selecionado
 function Gerenciar-UsuariosDoGrupo {
     param (
         [Parameter(Mandatory = $true)]
@@ -112,7 +111,7 @@ function Gerenciar-UsuariosDoGrupo {
         [string]$GroupId
     )
 
-    Write-LogMessage -Message "Iniciando gestão dos usuários do grupo..." -Type INFO
+    Write-LogMessage -Message "Iniciando gestao dos usuarios do grupo..." -Type INFO
     try {
         # Inicializar contadores
         $addedCount = 0
@@ -122,8 +121,8 @@ function Gerenciar-UsuariosDoGrupo {
         $group = Get-MgGroup -GroupId $GroupId -ErrorAction Stop
         Write-LogMessage -Message "Grupo encontrado: $($group.DisplayName)" -Type INFO
 
-        # Obter todos os usuários licenciados
-        Write-LogMessage -Message "Obtendo usuários com a licença selecionada..." -Type INFO
+        # Obter todos os usuarios licenciados
+        Write-LogMessage -Message "Obtendo usuarios com a licenca selecionada..." -Type INFO
         $usersWithLicense = @(Get-MgUser -All -Filter "assignedLicenses/any(x:x/skuId eq $SkuId)" -Select "Id,DisplayName,UserPrincipalName")
 
         # Obter membros atuais do grupo
@@ -134,52 +133,56 @@ function Gerenciar-UsuariosDoGrupo {
         $usersWithLicenseIds = @($usersWithLicense | Select-Object -ExpandProperty Id)
         $currentMemberIds = @($currentMembers | Select-Object -ExpandProperty Id)
 
-        # Usuários para adicionar (têm licença mas não estão no grupo)
+        # Usuarios para adicionar (tem licenca mas nao estao no grupo)
         $usersToAdd = @($usersWithLicense | Where-Object { $_.Id -notin $currentMemberIds })
 
-        # Usuários para remover (estão no grupo mas não têm licença)
+        # Usuarios para remover (estao no grupo mas nao tem licenca)
         $usersToRemove = @($currentMembers | Where-Object { $_.Id -notin $usersWithLicenseIds })
 
-        # Adicionar usuários ao grupo
+        # Adicionar usuarios ao grupo
         foreach ($user in $usersToAdd) {
             try {
                 New-MgGroupMember -GroupId $GroupId -DirectoryObjectId $user.Id
-                Write-LogMessage -Message "Usuário '$($user.DisplayName)' ($($user.UserPrincipalName)) adicionado ao grupo." -Type SUCCESS
+                Write-LogMessage -Message "Usuario '$($user.DisplayName)' ($($user.UserPrincipalName)) adicionado ao grupo." -Type SUCCESS
                 $addedCount++
             } catch {
-                Write-LogMessage -Message "Erro ao adicionar o usuário '$($user.DisplayName)' ao grupo: $_" -Type ERROR
+                Write-LogMessage -Message "Erro ao adicionar o usuario '$($user.DisplayName)' ao grupo: $_" -Type ERROR
             }
         }
 
-        # Remover usuários do grupo
+        # Remover usuarios do grupo
         foreach ($user in $usersToRemove) {
             try {
                 Remove-MgGroupMemberByRef -GroupId $GroupId -DirectoryObjectId $user.Id
                 $userName = (Get-MgUser -UserId $user.Id).DisplayName
-                Write-LogMessage -Message "Usuário '$userName' removido do grupo." -Type SUCCESS
+                Write-LogMessage -Message "Usuario '$userName' removido do grupo." -Type SUCCESS
                 $removedCount++
             } catch {
-                Write-LogMessage -Message "Erro ao remover o usuário com ID '$($user.Id)' do grupo: $_" -Type ERROR
+                Write-LogMessage -Message "Erro ao remover o usuario com ID '$($user.Id)' do grupo: $_" -Type ERROR
             }
         }
 
-        Write-LogMessage -Message "Gestão dos usuários do grupo concluída." -Type SUCCESS
-        
+        Write-LogMessage -Message "Gestao dos usuarios do grupo concluida." -Type SUCCESS
+
         # Exibir resumo
-        Write-LogMessage -Message "Resumo da operação:" -Type INFO
-        Write-LogMessage -Message "Usuários adicionados: $addedCount" -Type INFO
-        Write-LogMessage -Message "Usuários removidos: $removedCount" -Type INFO
-        Write-LogMessage -Message "Total de membros atual: $((Get-MgGroupMember -GroupId $GroupId -All).Count)" -Type INFO
+        Write-LogMessage -Message "Resumo da operacao:" -Type INFO
+        Write-LogMessage -Message "Usuarios adicionados: $addedCount" -Type INFO
+        Write-LogMessage -Message "Usuarios removidos: $removedCount" -Type INFO
+
+        # **Ajuste realizado aqui**
+        $groupMembers = @(Get-MgGroupMember -GroupId $GroupId -All)
+        $totalMembers = $groupMembers.Count
+        Write-LogMessage -Message "Total de membros atual: $totalMembers" -Type INFO
 
     } catch {
-        Write-LogMessage -Message "Erro ao gerenciar os usuários do grupo: $_" -Type ERROR
+        Write-LogMessage -Message "Erro ao gerenciar os usuarios do grupo: $_" -Type ERROR
     }
 }
 
-# Função principal para execução do script
+# Funcao principal para execucao do script
 function Main {
     try {
-        # Importar módulos necessários
+        # Importar modulos necessarios
         Import-RequiredModules
         
         # Conectar ao Graph
@@ -191,37 +194,37 @@ function Main {
                 return
             }
 
-            # Selecionar a licença
+            # Selecionar a licenca
             do {
-                $licenseChoice = Read-Host "Digite o número da licença que deseja processar"
+                $licenseChoice = Read-Host "Digite o numero da licenca que deseja processar"
                 $isValidLicense = [int]::TryParse($licenseChoice, [ref]$null) -and $licenseMapping.ContainsKey([int]$licenseChoice)
                 if (-not $isValidLicense) {
-                    Write-LogMessage -Message "Escolha inválida para licença. Tente novamente." -Type ERROR
+                    Write-LogMessage -Message "Escolha invalida para licenca. Tente novamente." -Type ERROR
                 }
             } while (-not $isValidLicense)
             
             $selectedLicense = $licenseMapping[[int]$licenseChoice]
-            Write-LogMessage -Message "Licença selecionada: $($selectedLicense.SkuPartNumber) | Sku ID: $($selectedLicense.SkuId)" -Type INFO
+            Write-LogMessage -Message "Licenca selecionada: $($selectedLicense.SkuPartNumber) | Sku ID: $($selectedLicense.SkuId)" -Type INFO
 
             # Solicitar o ID do grupo
             $groupId = Read-Host "Digite o ID do grupo que deseja atualizar"
 
-            # Gerenciar a associação do grupo
+            # Gerenciar a associacao do grupo
             Gerenciar-UsuariosDoGrupo -SkuId $selectedLicense.SkuId -GroupId $groupId
 
-            # Perguntar ao usuário se deseja continuar ou sair
-            $continuar = Read-Host "Deseja continuar gerenciando outro grupo ou licença? (Sim/Não)"
+            # Perguntar ao usuario se deseja continuar ou sair
+            $continuar = Read-Host "Deseja continuar gerenciando outro grupo ou licenca? (Sim/Nao)"
         } while ($continuar -match '^(S|s)(im)?$')
     } catch {
-        Write-LogMessage -Message "Erro crítico na execução do script: $_" -Type ERROR
+        Write-LogMessage -Message "Erro critico na execucao do script: $_" -Type ERROR
     } finally {
-        # Desconectar do Microsoft Graph se uma sessão for iniciada
+        # Desconectar do Microsoft Graph se uma sessao for iniciada
         if (Get-MgContext) {
             Disconnect-MgGraph -Confirm:$false
         }
-        Write-LogMessage -Message "Execução do script finalizada" -Type INFO
+        Write-LogMessage -Message "Execucao do script finalizada" -Type INFO
     }
 }
 
-# Execução da função principal
+# Execucao da funcao principal
 Main
